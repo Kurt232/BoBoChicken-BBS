@@ -14,3 +14,4 @@
 6. git remote add origin git@github.com:Kurt232/BoBoChicken-BBS.git
 7. git pull origin main
 8. git push --set-upstream origin main
+9. 不要在main分支上写代码，先在本地分支写，没有问题再本地merge，再pull main, 再push
