@@ -1,6 +1,6 @@
 <template>
     <nav class="navbar">
-        <div class="title">
+        <div class="title" @click="goToIndex">
             钵钵鸡BBS
         </div>
         <div class="search-and-user">
@@ -22,6 +22,10 @@ const router = useRouter();
 const login = function() {
     router.push('/login');
 }
+
+const goToIndex = function() {
+    router.push('/')
+}
 </script>
 
 <style scoped>
@@ -36,6 +40,7 @@ const login = function() {
 
 .title {
     font-size: large;
+    cursor: pointer;
 }
 
 .search-and-user {
