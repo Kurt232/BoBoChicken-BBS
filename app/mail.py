@@ -2,14 +2,22 @@ import smtplib
 from email.mime.text import MIMEText
 import random as rd
 def postmailnum(mailnum):
-    mail_host = 'smtp.qq.com'  
-    mail_user = '3517213049'  
-    mail_pass = 'xlujvtzkpxrvchjj'   
-    sender = '3517213049@qq.com'  
+    mail_host = 'smtp.163.com'  
+    mail_user = 'Tennineee'  
+    mail_pass = 'FDAQPSYNHRZZLOWU'   
+    sender = 'Tennineee@163.com'  
     receivers = [str(mailnum)] 
     num = rd.randint(100000,1000000)
-    message = MIMEText("钵钵鸡BBS\n验证码:"+str(num)+"\n温馨提示：不要给其他人看哦~",'plain','utf-8')  
-    message['Subject'] = '钵钵鸡BBS验证码' 
+    type = rd.randint(0,3)
+    if type==0:
+        message = MIMEText("钵钵鸡BBS验证码："+str(num),'plain','utf-8')  
+        message['Subject'] = "此邮件为验证码"
+    elif type==1:
+        message = MIMEText("钵钵鸡BBS欢迎您\n验证码："+str(num),'plain','utf-8')  
+        message['Subject'] = "钵钵鸡BBS欢迎您"
+    elif type==2:
+        message = MIMEText("Hello world!\n钵钵鸡BBS验证码："+str(num),'plain','utf-8')  
+        message['Subject'] = "Hello world!"
     message['From'] = sender 
     message['To'] = receivers[0]  
     try:
