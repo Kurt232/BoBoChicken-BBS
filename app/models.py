@@ -8,10 +8,12 @@ class User(models.Model):
     email=models.CharField(max_length=40)
     created_time=models.CharField(max_length=50)
     num_followed=models.IntegerField(default=0)
-    num_follow=models.IntegerField(default=0)
+    num_follow=models.IntegerField(default=0) # 其实不需要这个值，我们可以直接User.follow.all().count() 因为原子操作始终是性能瓶颈
     follow=models.ManyToManyField('self',related_name="followed")
     post=models.ManyToManyField('Bbs',related_name="posted")
     reply=models.ManyToManyField('Respond',related_name="replied")
+    star=models.ManyToManyField('Bbs',related_name="stared")
+    like=models.ManyToManyField('Bbs',related_name="liked")
 """
     uname=
     pwd=
@@ -26,27 +28,30 @@ class User(models.Model):
 class Bbs(models.Model):
     bid=models.AutoField(primary_key=True)
     uid=models.ForeignKey(User,on_delete=models.CASCADE)
+    uname=models.CharField(max_length=20)
     title=models.CharField(max_length=100)
     created_time=models.CharField(max_length=50)
     reply_time=models.CharField(max_length=50)
     content=models.CharField(max_length=400)
     num_reply=models.IntegerField(default=0)
-    num_respond=models.IntegerField(default=0)
+    num_seen=models.IntegerField(default=0)
     num_star=models.IntegerField(default=0)
+    num_like=models.IntegerField(default=0)
 """
     uid=
     title=标题
     created_time=创建时间
     content=内容
     num_reply=回复人数
-    num_respond=回复贴数
+    num_seen=浏览数
     num_star=被喜欢数
 """
 class Respond(models.Model):
     rid=models.AutoField(primary_key=True)
     uid=models.ForeignKey(User,on_delete=models.CASCADE)
+    uname=models.CharField(max_length=20)
+    rename=models.CharField(max_length=20)
     bid=models.ForeignKey(Bbs,on_delete=models.CASCADE)
-    responded_rid=models.IntegerField(default=-1)
     content=models.CharField(max_length=300)
     created_time=models.CharField(max_length=50)
 """
@@ -57,15 +62,3 @@ class Respond(models.Model):
     content=
     created_time=
 """
-
-class Star(models.Model):
-    sid=models.AutoField(primary_key=True)
-    uid=models.ForeignKey(User,on_delete=models.CASCADE)
-    bid=models.ForeignKey(Bbs,on_delete=models.CASCADE)
-
-"""
-    sid=
-    uid=
-    bid=
-"""
-
