@@ -22,4 +22,6 @@ urlpatterns = [
     path('info/follow', views.get_follow, name="get_follow"), # 用户信息
     path('info/followed', views.get_followed, name="get_followed"), # 用户信息
     path('deleteBbs', views.deleteBbs, name="deleteBbs"), # 删帖
+    path('deleteRespond', views.deleteRespond, name="deleteRespond"), # 删帖
+    path('deleteUser', views.deleteUser, name="deleteUser"), # 删帖
 ]

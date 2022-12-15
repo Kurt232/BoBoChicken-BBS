@@ -43,31 +43,40 @@ def login(req):
             return JsonResponse({"code": 200})# 密码错误或用户不存在
 
 #验证码发送前
-@csrf_exempt# 所有的view 都需要 这个注解防止被攻击
+@csrf_exempt
 def register(req):
-    '''
-    req: json
+    """
+        req: json
     req: {
         account: str,
-        password: str
+        password: str,
+        checknum: str
     }
-    '''
+    """
+    
     data = json.loads(req.body)
-    if req.method == 'GET': # 不应该存在GET 方法
-        return JsonResponse({})
-    elif req.method == 'POST':
-        account_temp = User.objects.filter(email = data['account'], pwd = data['password'])
+    print(data)
+    if req.method=='GET':
+        return JsonResponse({"code":200})#不该出现
+    elif req.method=='POST':
+        account = data['account']
+        uname = data['uname']
+        account_temp = User.objects.filter(email = data['account'])
+        password = data['password']
+        # return ReturnJsonResponse(JsonResponse({"code": 200}))# 密码错误或用户不存在
+        # 邮箱用户已存在
         if account_temp.exists():
-            info_user = list(account_temp.values())
-            assert len(info_user) == 1
-            try:
-                del req.session['uid']
-            except KeyError:
-                pass
-            req.session['uid'] = info_user[0]['uid']
-            return JsonResponse({"code": 100, "data": info_user[0]})#right
+            return JsonResponse({"code":200,
+                                "account":account,
+                                "uname":uname,
+                                'password':password})
         else:
-            return JsonResponse({"code": 200})# 密码错误或用户不存在
+            randomnum = ML.postmailnum(account)
+            return JsonResponse({"code":100,
+                                 "account":account,
+                                 "uname":uname,
+                                "password":password,
+                                "randomnum":randomnum})
 
 #验证码发送后
 @csrf_exempt
@@ -157,8 +166,8 @@ def post(req):
         try:
             # print(req.session['uid']) <type: int>
             if req.session['uid'] == data['uid']:
+            # if True:
                 user = User.objects.get(uid = data["uid"])
-                print(1)
                 newbbs = Bbs.objects.create(uid=user,
                                     title=data["title"],
                                     uname=user.uname,
@@ -168,10 +177,8 @@ def post(req):
                                     num_reply=0,
                                     num_seen=0,
                                     num_star=0,
-                                    num_like=0)
-                print(2)           
+                                    num_like=0)     
                 user.post.add(newbbs)
-                print(3)
                 return JsonResponse({'code':100}) # 成功
             else:
                 return JsonResponse({"code": 300}) # 身份问题
@@ -200,6 +207,7 @@ def reply(req):
         try:
             # print(req.session['uid']) <type: int>
             if req.session['uid'] == int(data['uid']):
+            # if True:
                 f = False
                 while True:
                     try:
@@ -248,6 +256,7 @@ def star(req):
             bid = int(req.GET.get('bid'))
             try:
                 if req.session['uid'] == uid:
+                # if True:
                     while True:
                         try:
                             user = User.objects.get(uid=uid)
@@ -256,14 +265,14 @@ def star(req):
                             return JsonResponse({'code':400}) # 请忽略
                         num = bbs.num_star
                         try:
-                            user.star.get(bid=bbs.bid)
+                            Star.objects.get(uid=user, bid=bbs)
                             return JsonResponse({'code':200}) # 已点收藏
-                        except Bbs.DoesNotExist:
+                        except Star.DoesNotExist:
                             try:
                                 with transaction.atomic():
                                     bbs.num_star = num + 1
                                     bbs.save()
-                                    user.star.add(bbs)
+                                    Star.objects.create(uid=user, bid=bbs)
                                     break
                             except DatabaseError:
                                 bbs.num_star = num
@@ -279,6 +288,7 @@ def star(req):
             bid = int(data['bid'])
             uid = int(data['uid'])
             if uid == uid_t:
+            # if True:
                 while True:
                     try:
                         bbs = Bbs.objects.get(bid=bid)
@@ -287,16 +297,16 @@ def star(req):
                         return JsonResponse({'code':400})
                     num = bbs.num_star
                     try:
-                        user.star.get(bid=bbs.bid)
+                        star = Star.objects.get(uid=user, bid=bbs)
                         try:
                             with transaction.atomic():
                                 bbs.num_star = num - 1
                                 bbs.save()
-                                bbs.posted.remove(user)
+                                star.delete()
                                 break
                         except DatabaseError:
                             bbs.num_star = num
-                    except Bbs.DoesNotExist:
+                    except Star.DoesNotExist:
                         return JsonResponse({'code':200}) # 已经取消
                 return JsonResponse({'code':100})
             else:
@@ -316,8 +326,9 @@ def like(req):
             uid = int(req.GET.get('uid'))
             bid = int(req.GET.get('bid'))
             try:
-                print(req.session['uid'])
+                #print(req.session['uid'])
                 if req.session['uid'] == uid:
+                # if True:
                     while True:
                         try:
                             user = User.objects.get(uid=uid)
@@ -326,14 +337,15 @@ def like(req):
                             return JsonResponse({'code':400}) # 请忽略
                         num = bbs.num_like
                         try:
-                            user.like.get(bid=bbs.bid)
+                            Like.objects.get(uid=user, bid=bbs)
                             return JsonResponse({'code':200}) # 已点收藏
-                        except Bbs.DoesNotExist:
+                        except Like.DoesNotExist:
                             try:
                                 with transaction.atomic():
                                     bbs.num_like = num + 1
                                     bbs.save()
-                                    user.like.add(bbs)
+                                    Like.objects.create(uid=user,
+                                                        bid=bbs)
                                     break
                             except DatabaseError:
                                 bbs.num_like = num
@@ -349,6 +361,7 @@ def like(req):
             bid = int(data['bid'])
             uid = int(data['uid'])
             if uid == uid_t:
+            # if True:
                 while True:
                     try:
                         bbs = Bbs.objects.get(bid=bid)
@@ -357,16 +370,16 @@ def like(req):
                         return JsonResponse({'code':400})
                     num = bbs.num_like
                     try:
-                        user.like.get(bid=bbs.bid)
+                        like = Like.objects.get(uid=user, bid=bbs)
                         try:
                             with transaction.atomic():
                                 bbs.num_like = num - 1
                                 bbs.save()
-                                bbs.posted.remove(user)
+                                like.delete()
                                 break
                         except DatabaseError:
                             bbs.num_like = num
-                    except Bbs.DoesNotExist:
+                    except Like.DoesNotExist:
                         return JsonResponse({'code':200}) # 已经取消
                 return JsonResponse({'code':100})
             else:
@@ -401,6 +414,7 @@ def follow(req):
             fid = int(req.GET.get('fid'))
             try:
                 if req.session['uid'] == uid:
+                # if True:
                     while True:
                         try:
                             user = User.objects.get(uid=uid)
@@ -410,16 +424,17 @@ def follow(req):
                         num1 = user.num_follow
                         num2 = fuser.num_followed
                         try:
-                            user.follow.get(uid=fuser.uid)
+                            Follow.objects.get(from_uid=user, to_uid=fuser)
                             return JsonResponse({'code':200}) # 已经follow
-                        except User.DoesNotExist:
+                        except Follow.DoesNotExist:
                             try:
                                 with transaction.atomic():
                                     user.num_follow = num1 + 1
                                     fuser.num_followed = num2 + 1
                                     user.save()
                                     fuser.save()
-                                    user.follow.add(fuser)
+                                    Follow.objects.create(from_uid=user,
+                                                        to_uid=fuser)
                                     break
                             except DatabaseError:
                                 user.num_follow = num1
@@ -436,6 +451,7 @@ def follow(req):
             fid = int(data['fid'])
             uid = int(data['uid'])
             if uid == uid_t:
+            # if True:
                 while True:
                     try:
                         user = User.objects.get(uid=uid)
@@ -445,19 +461,19 @@ def follow(req):
                     num1 = user.num_follow
                     num2 = fuser.num_followed
                     try:
-                        user.follow.get(uid=fuser.uid)
+                        follow = Follow.objects.get(from_uid=user, to_uid=fuser)
                         try:
                             with transaction.atomic():
                                 user.num_follow = num1 - 1
                                 fuser.num_followed = num2 - 1
                                 user.save()
                                 fuser.save()
-                                user.follow.remove(fuser)
+                                follow.delete()
                                 break
                         except DatabaseError:
                             user.num_follow = num1
                             fuser.num_followed = num2
-                    except User.DoesNotExist:
+                    except Follow.DoesNotExist:
                         return JsonResponse({'code':200}) # 已经unfollow
                 return JsonResponse({'code':100})
             else:
@@ -528,8 +544,8 @@ def info(req):
         response['statistics']['num_follow'] = user.num_follow
         response['statistics']['num_followed'] = user.num_followed
         response['statistics']['num_post'] = user.post.all().count()
-        response['statistics']['num_like'] = user.like.all().count()
-        response['statistics']['num_star'] = user.star.all().count()
+        response['statistics']['num_like'] = Like.objects.filter(uid=user).count()
+        response['statistics']['num_star'] = Star.objects.filter(uid=user).count()
         response['statistics']['num_reply'] = user.reply.all().count()
         response['code'] = 100
         return JsonResponse(response)
@@ -567,17 +583,26 @@ def get_like(req):
             pageSize = int(req.GET.get('pageSize'))
             uid = int(req.GET.get('uid'))
             user = User.objects.get(uid=uid)
-            result = user.like.all().only('bid').order_by('pk')
-            paginator = Paginator(result, pageSize)
+            result =Like.objects.filter(uid=user).only('bid').order_by('pk')
             response = {}
-            response['total'] = paginator.count
-            try:
-                bbss = paginator.page(page)
-            except PageNotAnInteger:
-                bbss = paginator.page(1)
-            except EmptyPage:
-                bbss = paginator.page(paginator.num_pages)
-            response['list'] = json.loads(serializers.serialize("json", bbss))
+            if result.count() > 0:
+                bns=None
+                for i in result:
+                    ans = Bbs.objects.filter(bid=i.bid.bid)
+                    if bns ==None: bns = ans
+                    else: bns = bns.union(ans)
+                paginator = Paginator(bns, pageSize)
+                response['total'] = paginator.count
+                try:
+                    bbss = paginator.page(page)
+                except PageNotAnInteger:
+                    bbss = paginator.page(1)
+                except EmptyPage:
+                    bbss = paginator.page(paginator.num_pages)
+                response['list'] = json.loads(serializers.serialize("json", bbss))
+            else:
+                response['total'] = 0
+                response['list'] = []
             response['code'] = 100
             return JsonResponse(response)
         except KeyError:
@@ -591,17 +616,26 @@ def get_star(req):
             pageSize = int(req.GET.get('pageSize'))
             uid = int(req.GET.get('uid'))
             user = User.objects.get(uid=uid)
-            result = user.star.all().only('bid').order_by('pk')
-            paginator = Paginator(result, pageSize)
+            result = Star.objects.filter(uid=user).only('bid').order_by('pk')
             response = {}
-            response['total'] = paginator.count
-            try:
-                bbss = paginator.page(page)
-            except PageNotAnInteger:
-                bbss = paginator.page(1)
-            except EmptyPage:
-                bbss = paginator.page(paginator.num_pages)
-            response['list'] = json.loads(serializers.serialize("json", bbss))
+            if result.count() > 0:
+                bns=None
+                for i in result:
+                    ans = Bbs.objects.filter(bid=i.bid.bid)
+                    if bns ==None: bns = ans
+                    else: bns = bns.union(ans)
+                paginator = Paginator(bns, pageSize)
+                response['total'] = paginator.count
+                try:
+                    bbss = paginator.page(page)
+                except PageNotAnInteger:
+                    bbss = paginator.page(1)
+                except EmptyPage:
+                    bbss = paginator.page(paginator.num_pages)
+                response['list'] = json.loads(serializers.serialize("json", bbss))
+            else:
+                response['total'] = 0
+                response['list'] = []
             response['code'] = 100
             return JsonResponse(response)
         except KeyError:
@@ -630,6 +664,7 @@ def get_reply(req):
             return JsonResponse(response)
         except KeyError:
             return JsonResponse({'code':301})
+
 # 按uid拿follow # 注意不能暴露密码
 @csrf_exempt
 def get_follow(req):
@@ -639,22 +674,32 @@ def get_follow(req):
             pageSize = int(req.GET.get('pageSize'))
             uid = int(req.GET.get('uid'))
             user = User.objects.get(uid=uid)
-            result = user.follow.all().order_by('-uid')
-            paginator = Paginator(result, pageSize)
+            result = Follow.objects.filter(from_uid=user).order_by('pk')
             response = {}
-            response['total'] = paginator.count
-            try:
-                bbss = paginator.page(page)
-            except PageNotAnInteger:
-                bbss = paginator.page(1)
-            except EmptyPage:
-                bbss = paginator.page(paginator.num_pages)
-            print(type(bbss))
-            response['list'] = json.loads(serializers.serialize("json", bbss))
+            if result.count() > 0:
+                bns=None
+                for i in result:
+                    ans = User.objects.filter(uid=i.to_uid.uid)
+                    if bns ==None: bns = ans
+                    else: bns = bns.union(ans)
+                paginator = Paginator(bns, pageSize)
+                response['total'] = paginator.count
+                try:
+                    bbss = paginator.page(page)
+                except PageNotAnInteger:
+                    bbss = paginator.page(1)
+                except EmptyPage:
+                    bbss = paginator.page(paginator.num_pages)
+                print(type(bbss))
+                response['list'] = json.loads(serializers.serialize("json", bbss))
+            else:
+                response['total'] = 0
+                response['list'] = []
             response['code'] = 100
             return JsonResponse(response)
         except KeyError:
             return JsonResponse({'code':301})
+
 # 按uid拿followed
 @csrf_exempt
 def get_followed(req):
@@ -664,18 +709,26 @@ def get_followed(req):
             pageSize = int(req.GET.get('pageSize'))
             uid = int(req.GET.get('uid'))
             user = User.objects.get(uid=uid)
-            result = user.user_set.all().order_by('pk')
-            
-            paginator = Paginator(result, pageSize)
+            result = Follow.objects.filter(to_uid=user).order_by('pk')
             response = {}
-            response['total'] = paginator.count
-            try:
-                bbss = paginator.page(page)
-            except PageNotAnInteger:
-                bbss = paginator.page(1)
-            except EmptyPage:
-                bbss = paginator.page(paginator.num_pages)
-            response['list'] = json.loads(serializers.serialize("json", bbss))
+            if result.count() > 0:
+                bns=None
+                for i in result:
+                    ans = User.objects.filter(uid=i.from_uid.uid)
+                    if bns ==None: bns = ans
+                    else: bns = bns.union(ans)
+                paginator = Paginator(bns, pageSize)
+                response['total'] = paginator.count
+                try:
+                    bbss = paginator.page(page)
+                except PageNotAnInteger:
+                    bbss = paginator.page(1)
+                except EmptyPage:
+                    bbss = paginator.page(paginator.num_pages)
+                response['list'] = json.loads(serializers.serialize("json", bbss))
+            else:
+                response['total'] = 0
+                response['list'] = []
             response['code'] = 100
             return JsonResponse(response)
         except KeyError:
@@ -723,6 +776,7 @@ def deleteBbs(req):
                     Bbsuid = i.uid.uid 
                     break
                 if req.session['uid'] == data['uid'] and req.session['uid'] == Bbsuid:
+                # if True:
                     maxnum = 10#最多试十次
                     while maxnum>0:
                         maxnum-=1
@@ -753,8 +807,8 @@ def deleteRespond(req):
         return JsonResponse({'code':400})#不该存在
     if req.method == "POST":
         try:
-            delete_bid = data["delete_bid"]
-            result = Respond.objects.filter(bid=delete_bid)
+            delete_rid = data["delete_rid"]
+            result = Respond.objects.filter(rid=delete_rid)
             Responduid=None
             if result.count()>0:
                 for i in result: 
@@ -762,6 +816,7 @@ def deleteRespond(req):
                     break
                 #会话uid=回复uid,绘画uid=前端传输uid
                 if req.session['uid'] == data['uid'] and req.session['uid'] == Responduid:
+                # if True:
                     maxnum = 10
                     while maxnum>0:
                         maxnum-=1
@@ -782,3 +837,16 @@ def deleteRespond(req):
                 return JsonResponse({'code':300})#回复不存在
         except KeyError:
             return JsonResponse({'code':301})
+
+#删用户
+@csrf_exempt
+def deleteUser(req):
+    if req.method=='GET':
+        uid = int(req.GET.get('uid'))
+        user = User.objects.get(uid=uid)
+        try:
+            user.delete()
+            return JsonResponse({'code':100})
+        except DatabaseError:
+            return JsonResponse({'code':200})
+        
